@@ -1,3 +1,5 @@
+const fs = require("fs");
+
 const initPayload = {
   "intent": "auth_token",
   "language": "en-US",
@@ -8,6 +10,8 @@ const resultPayload = {
   "wait" : true
 }
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 const fetchJson = async (...args) => {
   const response = await fetch(...args);
   const text = await response.text();
@@ -17,21 +21,18 @@ const fetchJson = async (...args) => {
   return JSON.parse(text);
 }
 
-const sandbox = true
+const sandbox = false
 
 const servicesDomain = sandbox ? "bravesoftware.com" : "brave.com"
 
-const servicesKey = "qjVKcxtUybh8WpKNoQ7EbgbkJTMu7omjDHKk=VrPApb8PwJyPE9eqchxedTsMEWg";
-//const apiKey = {"X-API-key": "px6zQ7rIMGaS8FE6cmpUp45WQTFJYXgo7ZlBhrFK"};
-//const apiKey = {"X-API-key": "l3vSH7ylHi1jVr0s3s5zh28hyGRCfWvd4GMxpFZ4"};
-
+const servicesKey = fs.readFileSync("services_key.txt", "utf8").trim();
 
 const verificationKeyHeader = {"Brave-Key": servicesKey};
 
 const apiKey = {"X-API-key": servicesKey};
 
 
-const headers = (token) => ({ "Authorization": ("Bearer " + token) })
+const authHeader = (token) => ({ "Authorization": ("Bearer " + token) })
 
 const verifyUrl = `https://accounts.bsg.${servicesDomain}/v2/verify`
 
@@ -53,9 +54,8 @@ const verifyResult = async (verificationToken) => {
   const result = await fetchJson(resultUrl, {
     method: "POST",
     body: JSON.stringify(resultPayload),
-    headers: Object.assign({}, headers(verificationToken), verificationKeyHeader)
+    headers: Object.assign({}, authHeader(verificationToken), verificationKeyHeader)
   });
-  console.log(result);
   const { authToken } = result;
   return authToken;
 }
@@ -71,14 +71,14 @@ const manageUrl = `https://aliases.${servicesDomain}/manage`
 const getAlias = async (sessionToken, active=true) => {
   return fetchJson(manageUrl + (active ? '?status=active' : ''), {
     method: "GET",
-    headers: Object.assign({}, headers(sessionToken), apiKey  )
+    headers: Object.assign({}, authHeader(sessionToken), apiKey  )
   });
 }
 
 const createAlias = async (sessionToken) => {
   return fetchJson(manageUrl, {
     method: "POST",
-    headers: Object.assign({}, headers(sessionToken), apiKey ),
+    headers: Object.assign({}, authHeader(sessionToken), apiKey ),
     body: '{}'
   });
 }
@@ -86,7 +86,7 @@ const createAlias = async (sessionToken) => {
 const updateAlias = async (sessionToken, aliasEmail, status) => {
   return fetchJson(manageUrl, {
     method: "PUT",
-    headers: Object.assign({}, headers(sessionToken), apiKey ),
+    headers: Object.assign({}, authHeader(sessionToken), apiKey ),
     body: JSON.stringify({ "alias": aliasEmail, status })
   });
 }
@@ -95,7 +95,7 @@ const deleteAlias = async (sessionToken, aliasEmail) => {
   const body = JSON.stringify({ "alias": aliasEmail })
   return fetchJson(manageUrl, {
     method: "DELETE",
-    headers: Object.assign({}, headers(sessionToken), apiKey ),
+    headers: Object.assign({}, authHeader(sessionToken), apiKey ),
     body
   });
 }
